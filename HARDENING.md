@@ -16,7 +16,7 @@ Action **github-community-projects--stale-repos/v9.0.15** was hardened automatic
 
 ### unpinned-uses (severity: high)
 
-The action.yml uses a Docker image reference with a mutable tag (`v9`) instead of an immutable SHA digest. This means the action could silently pull a different (potentially malicious) image if the tag is moved. The failing reference is: `image: "docker://ghcr.io/github-community-projects/stale_repos:v9"`. It should be pinned to a full SHA256 digest, e.g. `image: "docker://ghcr.io/github-community-projects/stale_repos@sha256:<64-hex-char-digest>"`
+The action.yml references the Docker image `docker://ghcr.io/github-community-projects/stale_repos:v9` using a mutable tag (`:v9`) instead of an immutable SHA digest. This means the image could be silently replaced with a different (potentially malicious) version without any change to the action definition. It should be pinned to a specific SHA digest, e.g. `docker://ghcr.io/github-community-projects/stale_repos@sha256:<64-hex-char-digest>`.
 
 Locations:
 
@@ -30,5 +30,5 @@ Locations:
 
 **Notes:**
 
-Pinned the Docker image reference in action.yml from the mutable tag `ghcr.io/github-community-projects/stale_repos:v9` to the immutable digest `ghcr.io/github-community-projects/stale_repos@sha256:c8e36cc33e5fce9bb7c9b7eaf8b8273868c27b89a248e025037df59d28179d63 # v9`. The original tag is preserved as a comment for readability.
+Pinned the Docker image `ghcr.io/github-community-projects/stale_repos:v9` to its immutable SHA digest `sha256:c8e36cc33e5fce9bb7c9b7eaf8b8273868c27b89a248e025037df59d28179d63` in action.yml line 10. The original `:v9` tag is preserved as a comment for readability.
 

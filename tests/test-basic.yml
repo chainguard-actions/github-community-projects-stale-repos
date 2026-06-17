@@ -1,0 +1,34 @@
+name: Test stale-repos basic usage
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INACTIVE_DAYS: "365"
+          ORGANIZATION: "github-community-projects"
+          SKIP_EMPTY_REPORTS: "false"
+      - name: Assert inactiveRepos output is set
+        env:
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "inactiveRepos output: $INACTIVE_REPOS"
+          if [ -z "$INACTIVE_REPOS" ]; then
+            echo "FAIL: inactiveRepos output is empty"
+            exit 1
+          fi
+          echo "PASS: inactiveRepos output is set"
+      - name: Assert inactiveRepos output is valid JSON
+        env:
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "Validating JSON: $INACTIVE_REPOS"
+          echo "$INACTIVE_REPOS" | python3 -c "import sys, json; data = json.load(sys.stdin); print('PASS: valid JSON with', len(data), 'entries')" || {
+            echo "FAIL: inactiveRepos output is not valid JSON"
+            exit 1
+          }

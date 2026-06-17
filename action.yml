@@ -1,0 +1,13 @@
+---
+name: "stale-repos"
+author: "github"
+description: "A GitHub Action to identify stale repos within an organization"
+outputs:
+  inactiveRepos:
+    description: "Inactive Repos in the organization"
+runs:
+  using: "docker"
+  image: "docker://ghcr.io/github-community-projects/stale_repos@sha256:c8e36cc33e5fce9bb7c9b7eaf8b8273868c27b89a248e025037df59d28179d63" # v9
+branding:
+  icon: "check-square"
+  color: "white"

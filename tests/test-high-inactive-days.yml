@@ -1,0 +1,32 @@
+name: Test stale-repos with high inactive days threshold
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INACTIVE_DAYS: "99999"
+          ORGANIZATION: "github-community-projects"
+          SKIP_EMPTY_REPORTS: "false"
+      - name: Assert inactiveRepos output is valid JSON array
+        env:
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "inactiveRepos output: $INACTIVE_REPOS"
+          if [ -z "$INACTIVE_REPOS" ]; then
+            echo "FAIL: inactiveRepos output is empty"
+            exit 1
+          fi
+          echo "$INACTIVE_REPOS" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          if not isinstance(data, list):
+              print('FAIL: expected a JSON array')
+              sys.exit(1)
+          print('PASS: valid JSON array with', len(data), 'entries')
+          " || exit 1

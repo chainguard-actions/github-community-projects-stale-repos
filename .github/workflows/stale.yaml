@@ -1,0 +1,28 @@
+name: "Close stale issues"
+on:
+  schedule:
+    - cron: "30 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/stale@eb5cf3af3ac0a1aa4c9c45633dd1ae542a27a899 # v10.3.0
+        with:
+          stale-issue-message: "This issue is stale because it has been open 21 days with no activity. Remove stale label or comment or this will be closed in 14 days."
+          close-issue-message: "This issue was closed because it has been stalled for 35 days with no activity."
+          days-before-stale: 21
+          days-before-close: 14
+          days-before-pr-close: -1
+          exempt-issue-labels: keep

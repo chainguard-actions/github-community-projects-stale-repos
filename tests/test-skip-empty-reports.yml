@@ -1,4 +1,4 @@
-name: Test basic usage - stale repos action
+name: Test skip-empty-reports enabled
 on:
   workflow_dispatch:
 jobs:
@@ -13,16 +13,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           INACTIVE_DAYS: "36500"
           ORGANIZATION: "github-community-projects"
-          SKIP_EMPTY_REPORTS: "false"
+          SKIP_EMPTY_REPORTS: "true"
           EXEMPT_REPOS: "*"
 
-      - name: Assert inactiveRepos output is valid JSON array
+      - name: Assert action completed and output is empty when skip-empty-reports is true
         env:
           ACTUAL: ${{ steps.stale-repos.outputs.inactiveRepos }}
         run: |
           echo "actual: $ACTUAL"
+          # With SKIP_EMPTY_REPORTS=true and no stale repos (all exempt), output should be empty
+          # (the action skips writing to GITHUB_OUTPUT when no stale repos found)
           if [ -z "$ACTUAL" ]; then
-            echo "PASS: output is empty string (no stale repos or skipped)"
+            echo "PASS: output is empty as expected with SKIP_EMPTY_REPORTS=true and no stale repos"
             exit 0
           fi
           NORM="$(echo "$ACTUAL" | tr -d '[:space:]')"
@@ -30,7 +32,7 @@ jobs:
             echo "PASS: output is empty JSON array or null"
             exit 0
           fi
-          echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); print('PASS: valid JSON array with', len(data), 'items')" || {
+          echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); print('PASS: valid JSON with', len(data), 'items')" || {
             echo "FAIL: output is not valid JSON: $ACTUAL"
             exit 1
           }

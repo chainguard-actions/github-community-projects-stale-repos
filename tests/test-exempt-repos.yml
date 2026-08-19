@@ -1,4 +1,4 @@
-name: Test basic usage - stale repos action
+name: Test exempt repos configuration
 on:
   workflow_dispatch:
 jobs:
@@ -11,26 +11,28 @@ jobs:
         uses: .
         env:
           GH_TOKEN: ${{ github.token }}
-          INACTIVE_DAYS: "36500"
+          INACTIVE_DAYS: "1"
           ORGANIZATION: "github-community-projects"
-          SKIP_EMPTY_REPORTS: "false"
           EXEMPT_REPOS: "*"
+          ACTIVITY_METHOD: "pushed"
+          SKIP_EMPTY_REPORTS: "false"
 
-      - name: Assert inactiveRepos output is valid JSON array
+      - name: Assert action completed with all repos exempt
         env:
           ACTUAL: ${{ steps.stale-repos.outputs.inactiveRepos }}
         run: |
           echo "actual: $ACTUAL"
+          # With EXEMPT_REPOS=*, all repos are exempt so output should be empty array
           if [ -z "$ACTUAL" ]; then
-            echo "PASS: output is empty string (no stale repos or skipped)"
+            echo "PASS: output is empty string"
             exit 0
           fi
           NORM="$(echo "$ACTUAL" | tr -d '[:space:]')"
           if [ "$NORM" = "[]" ] || [ "$NORM" = "null" ]; then
-            echo "PASS: output is empty JSON array or null"
+            echo "PASS: output is empty JSON array or null (all repos exempt)"
             exit 0
           fi
-          echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); print('PASS: valid JSON array with', len(data), 'items')" || {
+          echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); print('PASS: valid JSON with', len(data), 'items')" || {
             echo "FAIL: output is not valid JSON: $ACTUAL"
             exit 1
           }

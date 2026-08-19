@@ -1,0 +1,51 @@
+name: Test basic usage - stale repos with high threshold
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up a git origin reachable inside the Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "36500"
+          ORGANIZATION: "github-community-projects"
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert inactiveRepos output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: inactiveRepos output was empty"
+            exit 1
+          fi
+          echo "PASS: inactiveRepos output is set"
+
+      - name: Assert inactiveRepos output is valid JSON
+        env:
+          ACTUAL: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "actual: $ACTUAL"
+          if ! echo "$ACTUAL" | python3 -c "import sys, json; json.load(sys.stdin)" 2>/dev/null; then
+            echo "FAIL: inactiveRepos output is not valid JSON"
+            exit 1
+          fi
+          echo "PASS: inactiveRepos output is valid JSON"

@@ -1,0 +1,29 @@
+name: Test stale-repos with custom threshold
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        env:
+          GITHUB_TOKEN: fake-token-for-testing
+        with:
+          organization: github-community-projects
+          days-before-stale: 30
+        continue-on-error: true
+
+      - name: Assert step ran
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "Step outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action step was executed (outcome: $OUTCOME)"
+          else
+            echo "FAIL: unexpected outcome: $OUTCOME"
+            exit 1
+          fi

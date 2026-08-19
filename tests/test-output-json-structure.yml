@@ -1,0 +1,81 @@
+name: Test output JSON structure - verify repo fields
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up a git origin reachable inside the Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "1"
+          ORGANIZATION: "github-community-projects"
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert inactiveRepos output is set and valid JSON
+        env:
+          ACTUAL: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: inactiveRepos output was empty"
+            exit 1
+          fi
+          if ! echo "$ACTUAL" | python3 -c "import sys, json; json.load(sys.stdin)" 2>/dev/null; then
+            echo "FAIL: inactiveRepos output is not valid JSON"
+            exit 1
+          fi
+          echo "PASS: inactiveRepos output is valid JSON"
+
+      - name: Assert JSON array items have expected fields
+        env:
+          ACTUAL: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "actual: $ACTUAL"
+          python3 - <<'EOF'
+          import sys, json, os
+
+          data = json.loads(os.environ["ACTUAL"])
+          if not isinstance(data, list):
+              print("FAIL: expected a JSON array")
+              sys.exit(1)
+
+          if len(data) == 0:
+              print("INFO: no repos found with INACTIVE_DAYS=1, skipping field check")
+              print("PASS")
+              sys.exit(0)
+
+          required_fields = {"url", "daysInactive", "lastPushDate", "visibility"}
+          for repo in data:
+              missing = required_fields - set(repo.keys())
+              if missing:
+                  print(f"FAIL: repo entry missing fields: {missing}")
+                  sys.exit(1)
+              if not repo["url"].startswith("https://"):
+                  print(f"FAIL: url does not start with https://: {repo['url']}")
+                  sys.exit(1)
+              if not isinstance(repo["daysInactive"], int):
+                  print(f"FAIL: daysInactive is not an int: {repo['daysInactive']}")
+                  sys.exit(1)
+              if repo["visibility"] not in ("public", "private"):
+                  print(f"FAIL: visibility is not public/private: {repo['visibility']}")
+                  sys.exit(1)
+
+          print(f"PASS: all {len(data)} repo entries have expected fields")
+          EOF

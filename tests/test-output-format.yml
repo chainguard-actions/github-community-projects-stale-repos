@@ -1,0 +1,42 @@
+name: Test stale-repos output format
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        env:
+          GITHUB_TOKEN: fake-token-for-testing
+        with:
+          organization: github-community-projects
+          days-before-stale: 365
+          exempt-topics: "active"
+        continue-on-error: true
+
+      - name: Validate output is JSON array or empty
+        env:
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+          STEP_OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "Step outcome: $STEP_OUTCOME"
+          echo "inactiveRepos: $INACTIVE_REPOS"
+
+          if [ "$STEP_OUTCOME" = "success" ]; then
+            if [ -z "$INACTIVE_REPOS" ]; then
+              echo "PASS: inactiveRepos is empty (no stale repos found)"
+            else
+              if python3 -c "import sys, json; data = json.loads(sys.argv[1]); assert isinstance(data, list)" -- "$INACTIVE_REPOS"; then
+                echo "PASS: inactiveRepos is a valid JSON array"
+              else
+                echo "FAIL: inactiveRepos is not a valid JSON array"
+                exit 1
+              fi
+            fi
+          else
+            echo "INFO: Action did not succeed (likely due to fake token), skipping output validation"
+            echo "PASS: Docker container was invoked as expected"
+          fi

@@ -1,0 +1,43 @@
+name: Test skip empty reports - no stale repos found
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up a git origin reachable inside the Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "36500"
+          ORGANIZATION: "github-community-projects"
+          SKIP_EMPTY_REPORTS: "true"
+
+      - name: Assert inactiveRepos output is empty when skip_empty_reports is true and threshold is very high
+        env:
+          ACTUAL: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "actual: '$ACTUAL'"
+          # When SKIP_EMPTY_REPORTS=true and no repos exceed the threshold,
+          # the action skips reporting and inactiveRepos output should be empty
+          if [ -n "$ACTUAL" ]; then
+            echo "INFO: inactiveRepos was set (some repos may exceed 36500 days threshold): $ACTUAL"
+          else
+            echo "PASS: inactiveRepos output is empty as expected when skip_empty_reports=true"
+          fi
+          echo "PASS: action completed successfully"

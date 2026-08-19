@@ -1,0 +1,33 @@
+name: Test basic usage - no stale repos
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: stale-repos
+        name: Run stale-repos action with very high INACTIVE_DAYS
+        uses: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: 36500
+          ORGANIZATION: github-community-projects
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert inactiveRepos output is valid JSON array
+        env:
+          ACTUAL: ${{ steps.stale-repos.outputs.inactiveRepos }}
+        run: |
+          echo "actual: $ACTUAL"
+          # Output should be a JSON array (possibly empty [])
+          if [ -z "$ACTUAL" ]; then
+            echo "PASS: output is empty string (action ran but no output set)"
+          else
+            # Validate it's a JSON array
+            echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); assert isinstance(data, list), 'Expected a list'" && \
+              echo "PASS: inactiveRepos is a valid JSON array" || \
+              { echo "FAIL: inactiveRepos is not a valid JSON array"; exit 1; }
+          fi

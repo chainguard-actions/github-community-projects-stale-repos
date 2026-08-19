@@ -1,0 +1,32 @@
+name: Test SKIP_EMPTY_REPORTS=false with short inactive days
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: stale-repos
+        name: Run stale-repos action with 1 day threshold
+        uses: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: 1
+          ORGANIZATION: github-community-projects
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert inactiveRepos output is a valid JSON array
+        env:
+          ACTUAL: ${{ steps.stale-repos.outputs.inactiveRepos }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "PASS: output is empty string (action ran successfully)"
+          else
+            # Validate it's a JSON array
+            echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); assert isinstance(data, list), 'Expected a list'" && \
+              echo "PASS: inactiveRepos is a valid JSON array with $(echo "$ACTUAL" | python3 -c "import sys, json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "?") entries" || \
+              { echo "FAIL: inactiveRepos is not a valid JSON array"; exit 1; }
+          fi

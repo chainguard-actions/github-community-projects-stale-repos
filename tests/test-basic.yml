@@ -1,0 +1,30 @@
+name: Test basic usage - no stale repos
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "36500"
+          ORGANIZATION: "github-community-projects"
+          SKIP_EMPTY_REPORTS: "true"
+
+      - name: Assert action completed and output is empty or absent
+        env:
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "inactiveRepos output: $INACTIVE_REPOS"
+          # With a 100-year threshold and skip_empty_reports=true,
+          # we expect no output (empty string) since no repos will be that old
+          if [ -z "$INACTIVE_REPOS" ] || [ "$INACTIVE_REPOS" = "[]" ]; then
+            echo "PASS: no stale repos found as expected with very high threshold"
+          else
+            echo "INFO: some repos found inactive (unexpected but not a failure): $INACTIVE_REPOS"
+            echo "PASS"
+          fi

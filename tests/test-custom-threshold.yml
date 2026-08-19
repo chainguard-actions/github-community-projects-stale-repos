@@ -1,0 +1,29 @@
+name: Test custom days-before-stale threshold
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      INACTIVE_DAYS: "90"
+      ORGANIZATION: "github-community-projects"
+      SKIP_EMPTY_REPORTS: "true"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+      - name: Assert inactiveRepos output is valid JSON or empty
+        env:
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "inactiveRepos output: $INACTIVE_REPOS"
+          # Output should be either empty or a valid JSON array
+          if [ -n "$INACTIVE_REPOS" ]; then
+            echo "$INACTIVE_REPOS" | python3 -c "import sys, json; data = json.load(sys.stdin); print(f'Parsed {len(data)} repos')" && echo "PASS: output is valid JSON" || {
+              echo "FAIL: output is not valid JSON"
+              exit 1
+            }
+          else
+            echo "PASS: no inactive repos found (empty output)"
+          fi

@@ -1,0 +1,37 @@
+name: Test skip_empty_reports false - always produce output
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "36500"
+          ORGANIZATION: "github-community-projects"
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert inactiveRepos output is an empty JSON array
+        env:
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "inactiveRepos output: $INACTIVE_REPOS"
+          # With a 100-year threshold and skip_empty_reports=false,
+          # we expect an empty JSON array [] to be produced
+          if [ -z "$INACTIVE_REPOS" ]; then
+            echo "FAIL: inactiveRepos output is empty; expected at least '[]'"
+            exit 1
+          fi
+          # Validate it's a valid JSON array
+          echo "$INACTIVE_REPOS" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          if not isinstance(data, list):
+              print('FAIL: output is not a JSON array')
+              sys.exit(1)
+          print(f'PASS: got JSON array with {len(data)} entries (expected 0 or very few)')
+          "

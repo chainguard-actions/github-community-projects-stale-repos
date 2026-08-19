@@ -1,0 +1,35 @@
+name: Test activity-method configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run stale-repos action with default_branch_updated activity method
+        id: stale
+        uses: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INACTIVE_DAYS: "99999"
+          ORGANIZATION: "github-community-projects"
+          ACTIVITY_METHOD: "default_branch_updated"
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert inactiveRepos output is valid JSON with default_branch_updated method
+        env:
+          INACTIVE_REPOS: ${{ steps.stale.outputs.inactiveRepos }}
+        run: |
+          echo "inactiveRepos output: $INACTIVE_REPOS"
+          # With SKIP_EMPTY_REPORTS=false, output should always be set (at least empty array [])
+          if [ -z "$INACTIVE_REPOS" ]; then
+            echo "FAIL: inactiveRepos output is empty/missing"
+            exit 1
+          fi
+          # Validate it is valid JSON
+          echo "$INACTIVE_REPOS" | python3 -c "import sys, json; json.load(sys.stdin)" || {
+            echo "FAIL: inactiveRepos is not valid JSON"
+            exit 1
+          }
+          echo "PASS: inactiveRepos output is present and valid JSON with default_branch_updated method"

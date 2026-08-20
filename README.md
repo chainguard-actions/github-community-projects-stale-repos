@@ -15,6 +15,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v9.0.14 | [`v9.0.14`](https://github.com/chainguard-actions/github-community-projects-stale-repos/tree/v9.0.14) | [`378f317`](https://github.com/github-community-projects/stale-repos/commit/378f317724a25737b846bd9895bacf5726dd72ff) |
 | v9.0.15 | [`v9.0.15`](https://github.com/chainguard-actions/github-community-projects-stale-repos/tree/v9.0.15) | [`a0db8bf`](https://github.com/github-community-projects/stale-repos/commit/a0db8bfe2318ed6ddbd01e95d7633803f99f77e9) |
 | v9.0.16 | [`v9.0.16`](https://github.com/chainguard-actions/github-community-projects-stale-repos/tree/v9.0.16) | [`1528080`](https://github.com/github-community-projects/stale-repos/commit/1528080fabb5abf5d12213736bb1e3b5f7e682cd) |
+| v9.0.17 | [`v9.0.17`](https://github.com/chainguard-actions/github-community-projects-stale-repos/tree/v9.0.17) | [`589e3f5`](https://github.com/github-community-projects/stale-repos/commit/589e3f5e9aca6ec6c2bd978e6c181348907ccbac) |
 
 ## Privacy
 

@@ -1,0 +1,41 @@
+---
+name: stale repo identifier
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "3 2 1 * *"
+permissions:
+  contents: read
+jobs:
+  build:
+    name: stale repo identifier
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      packages: read
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run stale_repos tool
+        uses: docker://ghcr.io/github-community-projects/stale_repos:v9@sha256:374277cb9863651aeebd9a45f09083aaec013e72982d217bf4b058baa60bbc4a
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          ORGANIZATION: github
+          INACTIVE_DAYS: 1
+      - name: Create issue
+        uses: peter-evans/create-issue-from-file@fca9117c27cdc29c6c4db3b86c48e4115a786710
+        with:
+          title: Stale repository report
+          content-filepath: ./stale_repos.md
+          assignees: zkoppert

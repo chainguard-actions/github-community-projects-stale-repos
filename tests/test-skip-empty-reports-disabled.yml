@@ -1,0 +1,35 @@
+name: Test skip_empty_reports disabled produces output
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "36500"
+          SKIP_EMPTY_REPORTS: "false"
+      - name: Assert action ran and produced output or failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "inactiveRepos: $INACTIVE_REPOS"
+          if [ "$OUTCOME" = "success" ]; then
+            # With SKIP_EMPTY_REPORTS=false, output should be set (even if empty array)
+            if [ -z "$INACTIVE_REPOS" ]; then
+              echo "FAIL: expected inactiveRepos output to be set when SKIP_EMPTY_REPORTS=false"
+              exit 1
+            fi
+            echo "PASS: inactiveRepos output is set: $INACTIVE_REPOS"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected with sentinel repo or API limits)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

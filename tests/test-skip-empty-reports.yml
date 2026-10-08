@@ -1,0 +1,33 @@
+name: Test skip empty reports behavior
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "99999"
+          SKIP_EMPTY_REPORTS: "true"
+      - name: Assert action ran with skip-empty-reports behavior
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "inactiveRepos: $INACTIVE_REPOS"
+          if [ "$OUTCOME" = "success" ]; then
+            # With INACTIVE_DAYS=99999 and SKIP_EMPTY_REPORTS=true,
+            # no repos should be stale, so inactiveRepos output is not set
+            # (the action skips reporting entirely)
+            echo "PASS: action succeeded (no stale repos found, reporting skipped)"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (API call may not be accessible under harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

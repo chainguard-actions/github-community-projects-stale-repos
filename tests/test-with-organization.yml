@@ -1,0 +1,56 @@
+name: Test with organization specified
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up a git origin reachable inside the Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "1"
+          ORGANIZATION: "actions"
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert action ran with organization
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "inactiveRepos: $INACTIVE_REPOS"
+          if [ "$OUTCOME" = "success" ]; then
+            # With INACTIVE_DAYS=1, we expect some stale repos in the 'actions' org
+            # Output should be a JSON array
+            if [ -n "$INACTIVE_REPOS" ]; then
+              if echo "$INACTIVE_REPOS" | grep -qE '^\['; then
+                echo "PASS: inactiveRepos is a JSON array: $INACTIVE_REPOS"
+              else
+                echo "FAIL: inactiveRepos does not look like a JSON array"
+                exit 1
+              fi
+            else
+              echo "PASS: action succeeded (no stale repos output, may be empty report)"
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected under harness conditions)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

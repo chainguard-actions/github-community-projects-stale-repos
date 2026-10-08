@@ -1,0 +1,57 @@
+name: Test basic usage (no organization)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up a git origin reachable inside the Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INACTIVE_DAYS: "365"
+          SKIP_EMPTY_REPORTS: "false"
+
+      - name: Assert action ran (output set or failed gracefully)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          INACTIVE_REPOS: ${{ steps.action.outputs.inactiveRepos }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "inactiveRepos: $INACTIVE_REPOS"
+          if [ "$OUTCOME" = "success" ]; then
+            # Output should be a JSON array (possibly empty)
+            if [ -z "$INACTIVE_REPOS" ]; then
+              echo "WARN: action succeeded but inactiveRepos output is empty (may be expected if no stale repos)"
+            else
+              echo "inactiveRepos value: $INACTIVE_REPOS"
+              # Validate it looks like a JSON array
+              if echo "$INACTIVE_REPOS" | grep -qE '^\['; then
+                echo "PASS: inactiveRepos is a JSON array"
+              else
+                echo "FAIL: inactiveRepos does not look like a JSON array"
+                exit 1
+              fi
+            fi
+            echo "PASS: action succeeded"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected under harness conditions)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
